@@ -1,6 +1,6 @@
 %define libname %mklibname KF6Plasma
 %define devname %mklibname KF6Plasma -d
-%define git 20230609
+%define git 20230623
 
 Name: kf6-plasma-framework
 Version: 5.240.0
@@ -45,6 +45,7 @@ BuildRequires: cmake(KF6Notifications)
 BuildRequires: cmake(KF6Package)
 BuildRequires: cmake(KF6KCMUtils)
 BuildRequires: cmake(KF6Wayland)
+BuildRequires: cmake(KF6Svg)
 Requires: %{libname} = %{EVRD}
 
 %description
