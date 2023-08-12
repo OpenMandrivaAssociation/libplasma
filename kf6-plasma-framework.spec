@@ -1,6 +1,6 @@
 %define libname %mklibname KF6Plasma
 %define devname %mklibname KF6Plasma -d
-%define git 20230811
+%define git 20230812
 
 Name: kf6-plasma-framework
 Version: 5.240.0
@@ -71,6 +71,14 @@ Development files (Headers etc.) for %{name}.
 
 Foundational libraries, components, and tools of the Plasma workspaces
 
+# This should be merged back into the main package once we drop KF5
+%package -n plasma-framework-common
+Summary: Plasma Framework data files common to Plasma 5 and 6
+Group: System/Libraries
+
+%description -n plasma-framework-common
+Plasma Framework data files common to Plasma 5 and 6
+
 %prep
 %autosetup -p1 -n plasma-framework-%{?git:master}%{!?git:%{version}}
 %cmake \
@@ -95,7 +103,6 @@ done
 
 %files -f %{name}.lang
 %{_datadir}/qlogging-categories6/plasma-framework.*
-%{_datadir}/plasma
 
 %files -n %{devname}
 %{_includedir}/KF6/Plasma
@@ -111,3 +118,7 @@ done
 %{_qtdir}/qml/org/kde
 %{_qtdir}/plugins/kf6/kirigami
 %{_qtdir}/plugins/kf6/packagestructure
+
+%files -n plasma-framework-common
+%dir %{_datadir}/plasma
+%{_datadir}/plasma/desktoptheme
