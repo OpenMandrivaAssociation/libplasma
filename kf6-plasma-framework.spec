@@ -1,6 +1,6 @@
 %define libname %mklibname KF6Plasma
 %define devname %mklibname KF6Plasma -d
-%define git 20230812
+%define git 20230814
 
 Name: kf6-plasma-framework
 Version: 5.240.0
@@ -49,6 +49,7 @@ BuildRequires: cmake(KF6Svg)
 # Just to make sure we don't pull in the KF5 version
 BuildRequires: plasma6-xdg-desktop-portal-kde
 Requires: %{libname} = %{EVRD}
+Requires: plasma-framework-common = %{EVRD}
 
 %description
 Foundational libraries, components, and tools of the Plasma workspaces
