@@ -46,6 +46,7 @@ BuildRequires: cmake(KF6Package)
 BuildRequires: cmake(KF6KCMUtils)
 BuildRequires: cmake(KF6Wayland)
 BuildRequires: cmake(KF6Svg)
+BuildRequires: cmake(PlasmaWaylandProtocols)
 # Just to make sure we don't pull in the KF5 version
 BuildRequires: plasma6-xdg-desktop-portal-kde
 Requires: %{libname} = %{EVRD}
