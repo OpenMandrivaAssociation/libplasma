@@ -1,6 +1,6 @@
 %define libname %mklibname KF6Plasma
 %define devname %mklibname KF6Plasma -d
-%define git 20231023
+%define git 20231103
 
 Name: kf6-plasma-framework
 Version: 5.240.0
