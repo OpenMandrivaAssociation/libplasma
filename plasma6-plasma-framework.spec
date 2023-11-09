@@ -1,11 +1,17 @@
+%define stable %([ "$(echo %{version} |cut -d. -f2)" -ge 80 -o "$(echo %{version} |cut -d. -f3)" -ge 80 ] && echo -n un; echo -n stable)
+
 %define libname %mklibname KF6Plasma
 %define devname %mklibname KF6Plasma -d
-%define git 20231103
+#define git 20231103
 
 Name: kf6-plasma-framework
-Version: 5.240.0
+Version: 5.27.80
 Release: %{?git:0.%{git}.}1
+%if 0%{?git:1}
 Source0: https://invent.kde.org/frameworks/plasma-framework/-/archive/master/plasma-framework-master.tar.bz2#/plasma-framework-%{git}.tar.bz2
+%else
+Source0: http://download.kde.org/unstable/plasma/%{version}/plasma-framework-%{version}.tar.xz
+%endif
 Summary: Foundational libraries, components, and tools of the Plasma workspaces
 URL: https://invent.kde.org/frameworks/plasma-framework
 License: CC0-1.0 LGPL-2.0+ LGPL-2.1 LGPL-3.0
