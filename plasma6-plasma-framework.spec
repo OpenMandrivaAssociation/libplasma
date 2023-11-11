@@ -6,7 +6,7 @@
 
 Name: kf6-plasma-framework
 Version: 5.27.80
-Release: %{?git:0.%{git}.}1
+Release: %{?git:0.%{git}.}2
 %if 0%{?git:1}
 Source0: https://invent.kde.org/frameworks/plasma-framework/-/archive/master/plasma-framework-master.tar.bz2#/plasma-framework-%{git}.tar.bz2
 %else
