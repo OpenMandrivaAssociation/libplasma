@@ -1,19 +1,23 @@
 %define stable %([ "$(echo %{version} |cut -d. -f2)" -ge 80 -o "$(echo %{version} |cut -d. -f3)" -ge 80 ] && echo -n un; echo -n stable)
 
-%define libname %mklibname KF6Plasma
-%define devname %mklibname KF6Plasma -d
+# Renamed in 5.90.0
+%define oldlibname %mklibname KF6Plasma
+%define olddevname %mklibname KF6Plasma -d
+
+%define libname %mklibname Plasma
+%define devname %mklibname Plasma -d
 #define git 20231103
 
-Name: kf6-plasma-framework
-Version: 5.27.80
-Release: %{?git:0.%{git}.}2
+Name: plasma6-libplasma
+Version: 5.90.0
+Release: %{?git:0.%{git}.}1
 %if 0%{?git:1}
-Source0: https://invent.kde.org/frameworks/plasma-framework/-/archive/master/plasma-framework-master.tar.bz2#/plasma-framework-%{git}.tar.bz2
+Source0: https://invent.kde.org/frameworks/libplasma/-/archive/master/libplasma-master.tar.bz2#/libplasma-%{git}.tar.bz2
 %else
-Source0: http://download.kde.org/unstable/plasma/%{version}/plasma-framework-%{version}.tar.xz
+Source0: http://download.kde.org/unstable/plasma/%{version}/libplasma-%{version}.tar.xz
 %endif
 Summary: Foundational libraries, components, and tools of the Plasma workspaces
-URL: https://invent.kde.org/frameworks/plasma-framework
+URL: https://invent.kde.org/frameworks/libplasma
 License: CC0-1.0 LGPL-2.0+ LGPL-2.1 LGPL-3.0
 Group: System/Libraries
 BuildRequires: cmake
@@ -35,7 +39,7 @@ BuildRequires: cmake(Qt6Svg)
 BuildRequires: cmake(Qt6QuickTest)
 BuildRequires: cmake(Qt6QuickControls2)
 BuildRequires: cmake(KF6Kirigami2)
-BuildRequires: cmake(KF6Activities)
+BuildRequires: cmake(PlasmaActivities)
 BuildRequires: cmake(KF6Archive)
 BuildRequires: cmake(KF6Config)
 BuildRequires: cmake(KF6ConfigWidgets)
@@ -50,13 +54,14 @@ BuildRequires: cmake(KF6XmlGui)
 BuildRequires: cmake(KF6Notifications)
 BuildRequires: cmake(KF6Package)
 BuildRequires: cmake(KF6KCMUtils)
-BuildRequires: cmake(KF6Wayland)
+BuildRequires: cmake(KWayland)
 BuildRequires: cmake(KF6Svg)
 BuildRequires: cmake(PlasmaWaylandProtocols)
 # Just to make sure we don't pull in the KF5 version
 BuildRequires: plasma6-xdg-desktop-portal-kde
 Requires: %{libname} = %{EVRD}
 Requires: plasma-framework-common = %{EVRD}
+%rename kf6-plasma-framework
 
 %description
 Foundational libraries, components, and tools of the Plasma workspaces
@@ -65,6 +70,7 @@ Foundational libraries, components, and tools of the Plasma workspaces
 Summary: Foundational libraries, components, and tools of the Plasma workspaces
 Group: System/Libraries
 Requires: %{name} = %{EVRD}
+%rename %{oldlibname}
 
 %description -n %{libname}
 Foundational libraries, components, and tools of the Plasma workspaces
@@ -73,6 +79,7 @@ Foundational libraries, components, and tools of the Plasma workspaces
 Summary: Development files for %{name}
 Group: Development/C
 Requires: %{libname} = %{EVRD}
+%rename %{olddevname}
 
 %description -n %{devname}
 Development files (Headers etc.) for %{name}.
@@ -88,7 +95,7 @@ Group: System/Libraries
 Plasma Framework data files common to Plasma 5 and 6
 
 %prep
-%autosetup -p1 -n plasma-framework-%{?git:master}%{!?git:%{version}}
+%autosetup -p1 -n libplasma-%{?git:master}%{!?git:%{version}}
 %cmake \
 	-DBUILD_QCH:BOOL=ON \
 	-DBUILD_WITH_QT6:BOOL=ON \
@@ -110,19 +117,20 @@ done
 
 
 %files -f %{name}.lang
-%{_datadir}/qlogging-categories6/plasma-framework.*
+%{_datadir}/qlogging-categories6/plasma-framework.categories
+%{_datadir}/qlogging-categories6/plasma-framework.renamecategories
 
 %files -n %{devname}
-%{_includedir}/KF6/Plasma
-%{_includedir}/KF6/PlasmaQuick
-%{_libdir}/cmake/KF6Plasma
-%{_libdir}/cmake/KF6PlasmaQuick
+%{_includedir}/Plasma
+%{_includedir}/PlasmaQuick
+%{_libdir}/cmake/Plasma
+%{_libdir}/cmake/PlasmaQuick
 %{_datadir}/kdevappwizard/templates/*
-%doc %{_qtdir}/doc/KF6Plasma.*
+%doc %{_qtdir}/doc/Plasma.*
 
 %files -n %{libname}
-%{_libdir}/libKF6Plasma.so*
-%{_libdir}/libKF6PlasmaQuick.so*
+%{_libdir}/libPlasma.so*
+%{_libdir}/libPlasmaQuick.so*
 %{_qtdir}/qml/org/kde
 %{_qtdir}/plugins/kf6/kirigami
 %{_qtdir}/plugins/kf6/packagestructure
