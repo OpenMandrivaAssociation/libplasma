@@ -6,13 +6,13 @@
 
 %define libname %mklibname Plasma
 %define devname %mklibname Plasma -d
-#define git 20231103
+%define git 20240217
 
 Name: plasma6-libplasma
-Version: 5.93.0
+Version: 5.94.0
 Release: %{?git:0.%{git}.}1
 %if 0%{?git:1}
-Source0: https://invent.kde.org/frameworks/libplasma/-/archive/master/libplasma-master.tar.bz2#/libplasma-%{git}.tar.bz2
+Source0: https://invent.kde.org/plasma/libplasma/-/archive/master/libplasma-master.tar.bz2#/libplasma-%{git}.tar.bz2
 %else
 Source0: http://download.kde.org/unstable/plasma/%{version}/libplasma-%{version}.tar.xz
 %endif
