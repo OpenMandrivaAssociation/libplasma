@@ -7,12 +7,14 @@
 %define libname %mklibname Plasma
 %define devname %mklibname Plasma -d
 %define git 20240217
+%define gitbranch Plasma/6.0
+%define gitbranchd %(echo %{gitbranch} |sed -e "s,/,-,g")
 
 Name: plasma6-libplasma
 Version: 5.94.0
 Release: %{?git:0.%{git}.}1
 %if 0%{?git:1}
-Source0: https://invent.kde.org/plasma/libplasma/-/archive/master/libplasma-master.tar.bz2#/libplasma-%{git}.tar.bz2
+Source0: https://invent.kde.org/plasma/libplasma/-/archive/%{gitbranch}/libplasma-%{gitbranchd}.tar.bz2#/libplasma-%{git}.tar.bz2
 %else
 Source0: http://download.kde.org/unstable/plasma/%{version}/libplasma-%{version}.tar.xz
 %endif
@@ -94,7 +96,7 @@ Group: System/Libraries
 Plasma Framework data files common to Plasma 5 and 6
 
 %prep
-%autosetup -p1 -n libplasma-%{?git:master}%{!?git:%{version}}
+%autosetup -p1 -n libplasma-%{?git:%{gitbranchd}}%{!?git:%{version}}
 %cmake \
 	-DBUILD_QCH:BOOL=ON \
 	-DBUILD_WITH_QT6:BOOL=ON \
