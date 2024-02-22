@@ -6,12 +6,12 @@
 
 %define libname %mklibname Plasma
 %define devname %mklibname Plasma -d
-%define git 20240217
+%define git 20240222
 %define gitbranch Plasma/6.0
 %define gitbranchd %(echo %{gitbranch} |sed -e "s,/,-,g")
 
 Name: plasma6-libplasma
-Version: 5.94.0
+Version: 6.0.0
 Release: %{?git:0.%{git}.}1
 %if 0%{?git:1}
 Source0: https://invent.kde.org/plasma/libplasma/-/archive/%{gitbranch}/libplasma-%{gitbranchd}.tar.bz2#/libplasma-%{git}.tar.bz2
