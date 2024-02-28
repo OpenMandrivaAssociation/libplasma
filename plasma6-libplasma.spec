@@ -6,7 +6,7 @@
 
 %define libname %mklibname Plasma
 %define devname %mklibname Plasma -d
-%define git 20240222
+#define git 20240222
 %define gitbranch Plasma/6.0
 %define gitbranchd %(echo %{gitbranch} |sed -e "s,/,-,g")
 
@@ -16,7 +16,7 @@ Release: %{?git:0.%{git}.}1
 %if 0%{?git:1}
 Source0: https://invent.kde.org/plasma/libplasma/-/archive/%{gitbranch}/libplasma-%{gitbranchd}.tar.bz2#/libplasma-%{git}.tar.bz2
 %else
-Source0: http://download.kde.org/unstable/plasma/%{version}/libplasma-%{version}.tar.xz
+Source0: http://download.kde.org/%{stable}/plasma/%{version}/libplasma-%{version}.tar.xz
 %endif
 Summary: Foundational libraries, components, and tools of the Plasma workspaces
 URL: https://invent.kde.org/frameworks/libplasma
