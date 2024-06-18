@@ -132,6 +132,10 @@ done
 %files -n %{libname}
 %{_libdir}/libPlasma.so*
 %{_libdir}/libPlasmaQuick.so*
+# FIXME owning the whole /org namespace here
+# may be a bit excessive, but there's probably
+# no better place
+%dir %{_qtdir}/qml/org
 %{_qtdir}/qml/org/kde
 %{_qtdir}/plugins/kf6/kirigami
 %{_qtdir}/plugins/kf6/packagestructure
