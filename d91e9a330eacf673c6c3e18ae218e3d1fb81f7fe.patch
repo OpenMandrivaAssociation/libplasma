@@ -1,0 +1,37 @@
+From d91e9a330eacf673c6c3e18ae218e3d1fb81f7fe Mon Sep 17 00:00:00 2001
+From: ivan tkachenko <me@ratijas.tk>
+Date: Sat, 15 Jun 2024 02:36:26 +0600
+Subject: [PATCH] PlasmaExtras/PlaceholderMessage: Relax list type to T.Action
+
+Properties should be using Templates version for maximum flexibility.
+
+CCBUG: 487904
+---
+ .../plasmaextracomponents/qml/PlaceholderMessage.qml          | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/declarativeimports/plasmaextracomponents/qml/PlaceholderMessage.qml b/src/declarativeimports/plasmaextracomponents/qml/PlaceholderMessage.qml
+index 0e227f08a3..b23b529c09 100644
+--- a/src/declarativeimports/plasmaextracomponents/qml/PlaceholderMessage.qml
++++ b/src/declarativeimports/plasmaextracomponents/qml/PlaceholderMessage.qml
+@@ -6,7 +6,7 @@
+ 
+ import QtQuick
+ import QtQuick.Layouts
+-import QtQuick.Controls as QQC2
++import QtQuick.Templates as T
+ 
+ import org.kde.plasma.components as PlasmaComponents3
+ import org.kde.kirigami as Kirigami
+@@ -214,7 +214,7 @@ ColumnLayout {
+      *
+      * @since 5.72
+      */
+-    property QQC2.Action helpfulAction
++    property T.Action helpfulAction
+ 
+     spacing: Kirigami.Units.gridUnit
+ 
+-- 
+GitLab
+

@@ -12,7 +12,7 @@
 
 Name: plasma6-libplasma
 Version: 6.1.4
-Release: %{?git:0.%{git}.}1
+Release: %{?git:0.%{git}.}2
 %if 0%{?git:1}
 Source0: https://invent.kde.org/plasma/libplasma/-/archive/%{gitbranch}/libplasma-%{gitbranchd}.tar.bz2#/libplasma-%{git}.tar.bz2
 %else
@@ -63,6 +63,10 @@ BuildRequires: cmake(PlasmaWaylandProtocols)
 Requires: %{libname} = %{EVRD}
 Requires: plasma-framework-common = %{EVRD}
 %rename kf6-plasma-framework
+
+%patchlist
+# https://bugs.kde.org/show_bug.cgi?id=487464
+https://invent.kde.org/plasma/libplasma/-/commit/d91e9a330eacf673c6c3e18ae218e3d1fb81f7fe.patch
 
 %description
 Foundational libraries, components, and tools of the Plasma workspaces
