@@ -11,7 +11,7 @@
 %define gitbranchd %(echo %{gitbranch} |sed -e "s,/,-,g")
 
 Name: plasma6-libplasma
-Version: 6.1.5
+Version: 6.2.0
 Release: %{?git:0.%{git}.}1
 %if 0%{?git:1}
 Source0: https://invent.kde.org/plasma/libplasma/-/archive/%{gitbranch}/libplasma-%{gitbranchd}.tar.bz2#/libplasma-%{git}.tar.bz2
@@ -64,9 +64,7 @@ Requires: %{libname} = %{EVRD}
 Requires: plasma-framework-common = %{EVRD}
 %rename kf6-plasma-framework
 
-%patchlist
-# https://bugs.kde.org/show_bug.cgi?id=487464
-https://invent.kde.org/plasma/libplasma/-/commit/d91e9a330eacf673c6c3e18ae218e3d1fb81f7fe.patch
+#patchlist
 
 %description
 Foundational libraries, components, and tools of the Plasma workspaces
