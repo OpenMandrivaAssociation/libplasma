@@ -36,6 +36,7 @@ BuildRequires: cmake(Qt6QuickTest)
 BuildRequires: cmake(Qt6DBusTools)
 BuildRequires: cmake(Qt6WaylandClient)
 BuildRequires: pkgconfig(wayland-egl)
+BuildRequires: pkgconfig(xkbcommon)
 BuildRequires: gettext
 BuildRequires: doxygen
 BuildRequires: cmake(Qt6ToolsTools)
