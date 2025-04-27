@@ -1,16 +1,12 @@
 %define stable %([ "$(echo %{version} |cut -d. -f2)" -ge 80 -o "$(echo %{version} |cut -d. -f3)" -ge 80 ] && echo -n un; echo -n stable)
 
-# Renamed in 5.90.0
-%define oldlibname %mklibname KF6Plasma
-%define olddevname %mklibname KF6Plasma -d
-
 %define libname %mklibname Plasma
 %define devname %mklibname Plasma -d
 #define git 20240222
 %define gitbranch Plasma/6.0
 %define gitbranchd %(echo %{gitbranch} |sed -e "s,/,-,g")
 
-Name: plasma6-libplasma
+Name: libplasma
 Version: 6.3.4
 Release: %{?git:0.%{git}.}2
 %if 0%{?git:1}
@@ -63,9 +59,13 @@ BuildRequires: cmake(KF6KCMUtils)
 BuildRequires: cmake(KWayland)
 BuildRequires: cmake(KF6Svg)
 BuildRequires: cmake(PlasmaWaylandProtocols)
+BuildSystem: cmake
+BuildOption: -DKDE_INSTALL_USE_QT_SYS_PATHS:BOOL=ON
+BuildOption: -DBUILD_QCH:BOOL=ON
 Requires: %{libname} = %{EVRD}
 Requires: plasma-framework-common = %{EVRD}
-%rename kf6-plasma-framework
+# Renamed after 6.0 2025-04-27
+%rename plasma6-libplasma
 
 #patchlist
 
@@ -76,7 +76,6 @@ Foundational libraries, components, and tools of the Plasma workspaces
 Summary: Foundational libraries, components, and tools of the Plasma workspaces
 Group: System/Libraries
 Requires: %{name} = %{EVRD}
-%rename %{oldlibname}
 
 %description -n %{libname}
 Foundational libraries, components, and tools of the Plasma workspaces
@@ -85,7 +84,6 @@ Foundational libraries, components, and tools of the Plasma workspaces
 Summary: Development files for %{name}
 Group: Development/C
 Requires: %{libname} = %{EVRD}
-%rename %{olddevname}
 
 %description -n %{devname}
 Development files (Headers etc.) for %{name}.
@@ -100,27 +98,11 @@ Group: System/Libraries
 %description -n plasma-framework-common
 Plasma Framework data files common to Plasma 5 and 6
 
-%prep
-%autosetup -p1 -n libplasma-%{?git:%{gitbranchd}}%{!?git:%{version}}
-%cmake \
-	-DBUILD_QCH:BOOL=ON \
-	-DBUILD_WITH_QT6:BOOL=ON \
-	-DKDE_INSTALL_USE_QT_SYS_PATHS:BOOL=ON \
-	-G Ninja
-
-%build
-%ninja_build -C build
-
-%install
-%ninja_install -C build
-
-%find_lang %{name} --all-name --with-qt --with-html
-
+%install -a
 find %{buildroot}%{_datadir}/locale -name "*.js" |while read r; do
     L=$(echo $r |rev |cut -d/ -f4 |rev)
     echo "%%lang($L) %%{_datadir}/locale/$L/LC_SCRIPTS/libplasma6/$(basename $r)" >>%{name}.lang
 done
-
 
 %files -f %{name}.lang
 %{_datadir}/qlogging-categories6/plasma-framework.categories
