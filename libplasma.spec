@@ -7,7 +7,7 @@
 %define gitbranchd %(echo %{gitbranch} |sed -e "s,/,-,g")
 
 Name: libplasma
-Version: 6.3.5
+Version: 6.4.0
 Release: %{?git:0.%{git}.}1
 %if 0%{?git:1}
 Source0: https://invent.kde.org/plasma/libplasma/-/archive/%{gitbranch}/libplasma-%{gitbranchd}.tar.bz2#/libplasma-%{git}.tar.bz2
@@ -98,6 +98,13 @@ Group: System/Libraries
 %description -n plasma-framework-common
 Plasma Framework data files common to Plasma 5 and 6
 
+%package doc
+Summary: API documentation for %{name} in Qt Assistant format
+Group: Development/C++
+
+%description doc
+API documentation for %{name} in Qt Assistant format
+
 %install -a
 find %{buildroot}%{_datadir}/locale -name "*.js" |while read r; do
     L=$(echo $r |rev |cut -d/ -f4 |rev)
@@ -114,7 +121,6 @@ done
 %{_libdir}/cmake/Plasma
 %{_libdir}/cmake/PlasmaQuick
 %{_datadir}/kdevappwizard/templates/*
-%doc %{_qtdir}/doc/Plasma.*
 
 %files -n %{libname}
 %{_libdir}/libPlasma.so*
@@ -130,3 +136,6 @@ done
 %files -n plasma-framework-common
 %dir %{_datadir}/plasma
 %{_datadir}/plasma/desktoptheme
+
+%files doc
+%{_qtdir}/doc/Plasma.*
