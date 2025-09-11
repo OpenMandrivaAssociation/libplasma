@@ -7,8 +7,8 @@
 %define gitbranchd %(echo %{gitbranch} |sed -e "s,/,-,g")
 
 Name: libplasma
-Version: 6.4.4
-Release: %{?git:0.%{git}.}2
+Version: 6.4.5
+Release: %{?git:0.%{git}.}1
 %if 0%{?git:1}
 Source0: https://invent.kde.org/plasma/libplasma/-/archive/%{gitbranch}/libplasma-%{gitbranchd}.tar.bz2#/libplasma-%{git}.tar.bz2
 %else
