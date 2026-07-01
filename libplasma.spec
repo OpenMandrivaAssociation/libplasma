@@ -59,7 +59,7 @@ BuildRequires: cmake(KF6KCMUtils)
 BuildRequires: cmake(KWayland)
 BuildRequires: cmake(KF6Svg)
 BuildRequires: cmake(PlasmaWaylandProtocols)
-BuildRequires: cmake(WaylandProtocols)
+BuildRequires: pkgconfig(wayland-protocols)
 BuildSystem: cmake
 BuildOption: -DKDE_INSTALL_USE_QT_SYS_PATHS:BOOL=ON
 BuildOption: -DBUILD_QCH:BOOL=ON
