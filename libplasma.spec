@@ -116,6 +116,8 @@ done
 %{_includedir}/PlasmaQuick
 %{_libdir}/cmake/Plasma
 %{_libdir}/cmake/PlasmaQuick
+%{_qtdir}/metatypes/qt6plasma_metatypes.json
+%{_qtdir}/metatypes/qt6plasmaquick_metatypes.json
 %{_datadir}/kdevappwizard/templates/*
 
 %files -n %{libname}
