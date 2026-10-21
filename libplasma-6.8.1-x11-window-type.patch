@@ -1,0 +1,521 @@
+diff -ruN a/CMakeLists.txt b/CMakeLists.txt
+--- a/CMakeLists.txt	2026-10-21 23:01:50.812292312 +0200
++++ b/CMakeLists.txt	2026-10-21 23:20:06.431404171 +0200
+@@ -70,6 +70,30 @@
+ find_package(Wayland 1.9 REQUIRED Client)
+ find_package(WaylandProtocols 1.46 REQUIRED)
+ 
++# X11 contrast-effect watching. Wayland uses ext_background_effect_v1 instead.
++option(WITHOUT_X11 "Build without X11 support (skips finding X11)." OFF)
++if(NOT WITHOUT_X11)
++    find_package(X11 MODULE)
++    set_package_properties(X11 PROPERTIES
++        DESCRIPTION "X11 libraries"
++        URL "https://www.x.org/"
++        TYPE OPTIONAL
++    )
++    find_package(XCB MODULE COMPONENTS XCB)
++    set_package_properties(XCB PROPERTIES
++        DESCRIPTION "X protocol C-language Binding"
++        URL "https://xcb.freedesktop.org/"
++        TYPE OPTIONAL
++    )
++    if(X11_FOUND AND XCB_XCB_FOUND)
++        set(HAVE_X11 1)
++    else()
++        set(HAVE_X11 0)
++    endif()
++else()
++    set(HAVE_X11 0)
++endif()
++
+ if(ENABLE_ACTIVITIES)
+     find_package(PlasmaActivities ${PROJECT_DEP_VERSION} REQUIRED)
+ endif()
+diff -ruN a/src/declarativeimports/core/tooltipdialog.cpp b/src/declarativeimports/core/tooltipdialog.cpp
+--- a/src/declarativeimports/core/tooltipdialog.cpp	2026-10-21 23:01:50.831148026 +0200
++++ b/src/declarativeimports/core/tooltipdialog.cpp	2026-10-21 23:20:06.423404070 +0200
+@@ -25,9 +25,14 @@
+     , m_owner(nullptr)
+ {
+     Qt::WindowFlags flags = Qt::WindowDoesNotAcceptFocus | Qt::WindowStaysOnTopHint;
+-    flags |= Qt::FramelessWindowHint;
+-    PlasmaShellWaylandIntegration::get(this)->setRole(QtWayland::org_kde_plasma_surface::role_tooltip);
+-    PlasmaShellWaylandIntegration::get(this)->setTakesFocus(false);
++    if (KWindowSystem::isPlatformX11()) {
++        // Override-redirect tooltip. Do not also ask the Wayland shell for a role.
++        flags |= Qt::ToolTip | Qt::BypassWindowManagerHint;
++    } else {
++        flags |= Qt::FramelessWindowHint;
++        PlasmaShellWaylandIntegration::get(this)->setRole(QtWayland::org_kde_plasma_surface::role_tooltip);
++        PlasmaShellWaylandIntegration::get(this)->setTakesFocus(false);
++    }
+     setFlags(flags);
+ 
+     m_hideTimer.setSingleShot(true);
+diff -ruN a/src/plasma/CMakeLists.txt b/src/plasma/CMakeLists.txt
+--- a/src/plasma/CMakeLists.txt	2026-10-21 23:01:50.866002166 +0200
++++ b/src/plasma/CMakeLists.txt	2026-10-21 23:20:06.423404070 +0200
+@@ -107,6 +107,10 @@
+     KF6::Svg
+ )
+ 
++if(HAVE_X11)
++    target_link_libraries(Plasma PRIVATE X11::X11 XCB::XCB)
++endif()
++
+ if(ENABLE_ACTIVITIES)
+     target_link_libraries(Plasma PRIVATE Plasma::Activities)
+ endif()
+diff -ruN a/src/plasma/config-plasma.h.cmake b/src/plasma/config-plasma.h.cmake
+--- a/src/plasma/config-plasma.h.cmake	2026-10-21 22:56:18.269275418 +0200
++++ b/src/plasma/config-plasma.h.cmake	2026-10-21 23:20:06.419404020 +0200
+@@ -1,3 +1,4 @@
++#cmakedefine01 HAVE_X11
+ #cmakedefine01 ENABLE_ACTIVITIES
+ 
+ #define PLASMA_RELATIVE_DATA_INSTALL_DIR "@PLASMA_RELATIVE_DATA_INSTALL_DIR@"
+diff -ruN a/src/plasma/private/blureffectwatcher.cpp b/src/plasma/private/blureffectwatcher.cpp
+--- a/src/plasma/private/blureffectwatcher.cpp	2026-10-21 23:01:50.889333617 +0200
++++ b/src/plasma/private/blureffectwatcher.cpp	2026-10-21 23:21:02.428100727 +0200
+@@ -6,8 +6,15 @@
+ 
+ #include "blureffectwatcher_p.h"
+ 
++#include <QScopedPointer>
+ #include <QWaylandClientExtensionTemplate>
+ 
++#include <KWindowSystem>
++
++#if HAVE_X11
++#include <X11/Xlib.h>
++#endif
++
+ #include "qwayland-ext-background-effect-v1.h"
+ 
+ namespace Plasma
+@@ -49,6 +56,10 @@
+ 
+ BlurEffectWatcher::BlurEffectWatcher(QObject *parent)
+     : QObject(parent)
++#if HAVE_X11
++    , m_property(XCB_ATOM_NONE)
++    , m_x11Interface(qGuiApp->nativeInterface<QNativeInterface::QX11Application>())
++#endif
+ {
+     // TODO: New KWindowEffects APIs are needed.
+     // ext_background_effect_manager_v1 is a Wayland protocol. Constructing the
+@@ -65,6 +76,33 @@
+             Q_EMIT effectChanged(m_effectActive);
+         });
+         m_effectActive = m_backgroundEffectManager->m_supportsBlur;
++    } else if (KWindowSystem::isPlatformX11()) {
++#if HAVE_X11
++        // _KDE_NET_WM_BACKGROUND_CONTRAST_REGION is set on the root window while
++        // KWin's contrast effect is active. Wayland uses the protocol above.
++        if (!m_x11Interface) {
++            return;
++        }
++        QCoreApplication::instance()->installNativeEventFilter(this);
++
++        xcb_connection_t *c = m_x11Interface->connection();
++        const QByteArray propertyName("_KDE_NET_WM_BACKGROUND_CONTRAST_REGION");
++        xcb_intern_atom_cookie_t atomCookie = xcb_intern_atom_unchecked(c, false, propertyName.length(), propertyName.constData());
++        xcb_get_window_attributes_cookie_t winAttrCookie = xcb_get_window_attributes_unchecked(c, DefaultRootWindow(m_x11Interface->display()));
++
++        QScopedPointer<xcb_intern_atom_reply_t, QScopedPointerPodDeleter> atom(xcb_intern_atom_reply(c, atomCookie, nullptr));
++        if (!atom.isNull()) {
++            m_property = atom->atom;
++        }
++
++        m_effectActive = fetchEffectActive();
++
++        QScopedPointer<xcb_get_window_attributes_reply_t, QScopedPointerPodDeleter> attrs(xcb_get_window_attributes_reply(c, winAttrCookie, nullptr));
++        if (!attrs.isNull()) {
++            uint32_t events = attrs->your_event_mask | XCB_EVENT_MASK_PROPERTY_CHANGE;
++            xcb_change_window_attributes(c, DefaultRootWindow(m_x11Interface->display()), XCB_CW_EVENT_MASK, &events);
++        }
++#endif
+     }
+ }
+ 
+@@ -72,6 +110,60 @@
+ {
+ }
+ 
++#if HAVE_X11
++bool BlurEffectWatcher::nativeEventFilter(const QByteArray &eventType, void *message, qintptr *result)
++{
++    if (KWindowSystem::isPlatformWayland()) {
++        return false;
++    }
++
++    Q_UNUSED(result);
++    // A faster comparison than eventType != "xcb_generic_event_t"
++    // given that eventType can only have the following values:
++    // "xcb_generic_event_t", "windows_generic_MSG" and "mac_generic_NSEvent"
++    // According to https://doc.qt.io/qt-5/qabstractnativeeventfilter.html
++    if (eventType[0] != 'x') {
++        return false;
++    }
++    xcb_generic_event_t *event = reinterpret_cast<xcb_generic_event_t *>(message);
++    uint response_type = event->response_type & ~0x80;
++    if (response_type != XCB_PROPERTY_NOTIFY || m_property == XCB_ATOM_NONE) {
++        return false;
++    }
++
++    xcb_property_notify_event_t *prop_event = reinterpret_cast<xcb_property_notify_event_t *>(event);
++    if (prop_event->atom == m_property) {
++        bool nowEffectActive = fetchEffectActive();
++        if (m_effectActive != nowEffectActive) {
++            m_effectActive = nowEffectActive;
++            Q_EMIT effectChanged(m_effectActive);
++        }
++    }
++
++    return false;
++}
++
++bool BlurEffectWatcher::fetchEffectActive() const
++{
++    if (m_property == XCB_ATOM_NONE || !m_x11Interface) {
++        return false;
++    }
++    xcb_connection_t *c = m_x11Interface->connection();
++    xcb_list_properties_cookie_t propsCookie = xcb_list_properties_unchecked(c, DefaultRootWindow(m_x11Interface->display()));
++    QScopedPointer<xcb_list_properties_reply_t, QScopedPointerPodDeleter> props(xcb_list_properties_reply(c, propsCookie, nullptr));
++    if (props.isNull()) {
++        return false;
++    }
++    xcb_atom_t *atoms = xcb_list_properties_atoms(props.data());
++    for (int i = 0; i < props->atoms_len; ++i) {
++        if (atoms[i] == m_property) {
++            return true;
++        }
++    }
++    return false;
++}
++#endif
++
+ bool BlurEffectWatcher::isEffectActive() const
+ {
+     return m_effectActive;
+diff -ruN a/src/plasma/private/blureffectwatcher_p.h b/src/plasma/private/blureffectwatcher_p.h
+--- a/src/plasma/private/blureffectwatcher_p.h	2026-10-21 23:01:50.867888970 +0200
++++ b/src/plasma/private/blureffectwatcher_p.h	2026-10-21 23:20:06.419404020 +0200
+@@ -7,14 +7,19 @@
+ #ifndef ContrastEffectWatcher_P_H
+ #define ContrastEffectWatcher_P_H
+ 
++#include <QAbstractNativeEventFilter>
+ #include <QGuiApplication>
+ #include <QObject>
+ 
++#include <xcb/xcb.h>
++
++#include <config-plasma.h>
++
+ namespace Plasma
+ {
+ class BackgroundEffectManager;
+ 
+-class BlurEffectWatcher : public QObject
++class BlurEffectWatcher : public QObject, public QAbstractNativeEventFilter
+ {
+     Q_OBJECT
+ 
+@@ -24,10 +29,19 @@
+     bool isEffectActive() const;
+ 
+ protected:
++#if HAVE_X11
++    bool nativeEventFilter(const QByteArray &eventType, void *message, qintptr *) override;
++#endif
++
+ Q_SIGNALS:
+     void effectChanged(bool on);
+ 
+ private:
++#if HAVE_X11
++    bool fetchEffectActive() const;
++    xcb_atom_t m_property;
++    QNativeInterface::QX11Application *m_x11Interface = nullptr;
++#endif
+     std::unique_ptr<BackgroundEffectManager> m_backgroundEffectManager;
+     bool m_effectActive = false;
+ };
+diff -ruN a/src/plasma/private/theme_p.cpp b/src/plasma/private/theme_p.cpp
+--- a/src/plasma/private/theme_p.cpp	2026-10-21 23:01:50.868043972 +0200
++++ b/src/plasma/private/theme_p.cpp	2026-10-21 23:20:07.067943771 +0200
+@@ -17,6 +17,7 @@
+ #include <KSharedConfig>
+ #include <KWindowEffects>
+ #include <KWindowSystem>
++#include <KX11Extras>
+ 
+ namespace Plasma
+ {
+@@ -76,6 +77,7 @@
+     , headerColorScheme(QPalette::Active, KColorScheme::Header, KSharedConfigPtr(nullptr))
+     , tooltipColorScheme(QPalette::Active, KColorScheme::Tooltip, KSharedConfigPtr(nullptr))
+     , defaultWallpaperTheme(QStringLiteral(DEFAULT_WALLPAPER_THEME))
++    , compositingActive(true)
+     , backgroundContrastActive(KWindowEffects::isEffectAvailable(KWindowEffects::BackgroundContrast))
+     , isDefault(true)
+     , useGlobal(true)
+@@ -90,6 +92,11 @@
+     , apiMinor(0)
+     , apiRevision(0)
+ {
++    // Wayland (and every non-X11 platform) stays composited. Only X11 can turn it off.
++    if (KWindowSystem::isPlatformX11()) {
++        compositingActive = KX11Extras::self()->compositingActive();
++    }
++
+     kSvgImageSet = std::unique_ptr<KSvg::ImageSet>(new KSvg::ImageSet);
+     kSvgImageSet->setBasePath(QStringLiteral(PLASMA_RELATIVE_DATA_INSTALL_DIR "/desktoptheme/"));
+ 
+@@ -123,6 +130,9 @@
+         settingsChanged(true);
+     });
+ 
++    if (KWindowSystem::isPlatformX11()) {
++        connect(KX11Extras::self(), &KX11Extras::compositingChanged, selectorsUpdateTimer, qOverload<>(&QTimer::start));
++    }
+     updateKSvgSelectors();
+ }
+ 
+@@ -153,13 +163,28 @@
+ 
+ void ThemePrivate::updateKSvgSelectors()
+ {
+-    backgroundContrastActive = s_blurEffectWatcher->isEffectActive();
++    if (KWindowSystem::isPlatformX11()) {
++        compositingActive = KX11Extras::compositingActive();
++    } else {
++        compositingActive = true;
++    }
+ 
++    // The watcher exists only when the default pixmap depth is above 8.
++    // On Wayland with that depth, this is the same contrast bit 6.8 used.
++    if (s_blurEffectWatcher) {
++        backgroundContrastActive = s_blurEffectWatcher->isEffectActive();
++    }
++
++    if (compositingActive) {
+         if (backgroundContrastActive) {
+             kSvgImageSet->setSelectors({QStringLiteral("translucent")});
+         } else {
+             kSvgImageSet->setSelectors({});
+         }
++    } else {
++        // Non-composited X11 cannot show the translucent theme frames.
++        kSvgImageSet->setSelectors({QStringLiteral("opaque")});
++    }
+ }
+ 
+ void ThemePrivate::colorsChanged()
+diff -ruN a/src/plasma/private/theme_p.h b/src/plasma/private/theme_p.h
+--- a/src/plasma/private/theme_p.h	2026-10-21 23:01:50.868117183 +0200
++++ b/src/plasma/private/theme_p.h	2026-10-21 23:20:06.439404270 +0200
+@@ -89,6 +89,7 @@
+     QTimer *selectorsUpdateTimer;
+     QTimer *updateNotificationTimer;
+ 
++    bool compositingActive : 1;
+     bool backgroundContrastActive : 1;
+     bool isDefault : 1;
+     bool useGlobal : 1;
+diff -ruN a/src/plasmaquick/appletpopup.cpp b/src/plasmaquick/appletpopup.cpp
+--- a/src/plasmaquick/appletpopup.cpp	2026-10-21 23:01:50.868314055 +0200
++++ b/src/plasmaquick/appletpopup.cpp	2026-10-21 23:20:06.735407950 +0200
+@@ -17,6 +17,8 @@
+ #include "plasmashellwaylandintegration.h"
+ #include "windowresizehandler.h"
+ #include <KConfigGroup>
++#include <KWindowSystem>
++#include <KX11Extras>
+ 
+ // This is a proxy object that connects to the Layout attached property of an item
+ // it also handles turning properties to proper defaults
+@@ -57,6 +59,11 @@
+     setAnimated(true);
+     setFlags(flags() | Qt::Dialog);
+ 
++    // Wayland role calls no-op on X11 (the integration returns before creating a shell surface).
++    // X11 still needs the EWMH type so the window manager treats this as an applet popup.
++    if (KWindowSystem::isPlatformX11()) {
++        KX11Extras::setType(winId(), NET::AppletPopup);
++    }
+     PlasmaShellWaylandIntegration::get(this)->setRole(QtWayland::org_kde_plasma_surface::role::role_appletpopup);
+     PlasmaShellWaylandIntegration::get(this)->setTakesFocus(true);
+ 
+diff -ruN a/src/plasmaquick/dialog.cpp b/src/plasmaquick/dialog.cpp
+--- a/src/plasmaquick/dialog.cpp	2026-10-21 23:01:50.869106706 +0200
++++ b/src/plasmaquick/dialog.cpp	2026-10-21 23:20:07.203413767 +0200
+@@ -25,10 +25,12 @@
+ #include <KWindowEffects>
+ #include <KWindowInfo>
+ #include <KWindowSystem>
++#include <KX11Extras>
+ #include <Plasma/Corona>
+ 
+ #include <QDebug>
+ #include <optional>
++#include <qpa/qplatformwindow_p.h>
+ 
+ #include "plasmashellwaylandintegration.h"
+ 
+@@ -245,8 +247,20 @@
+                                                  theme.backgroundSaturation(),
+                                                  mask);
+ 
+-        hasMask = true;
+-        q->setMask(dialogBackground->mask());
++        // Composited X11 clears the X shape so shadows are not clipped.
++        // Non-composited X11 keeps the frame mask. Wayland always sets it.
++        if (KWindowSystem::isPlatformX11()) {
++            if (!KX11Extras::compositingActive()) {
++                hasMask = true;
++                q->setMask(dialogBackground->mask());
++            } else if (hasMask) {
++                hasMask = false;
++                q->setMask(QRegion());
++            }
++        } else {
++            hasMask = true;
++            q->setMask(dialogBackground->mask());
++        }
+         if (q->isVisible()) {
+             DialogShadows::instance()->addWindow(q, dialogBackground->enabledBorders());
+         }
+@@ -696,6 +710,45 @@
+ 
+ void DialogPrivate::applyType()
+ {
++    // Qt's xcb backend reads _q_xcb_wm_window_type. Where it has no matching
++    // type, fall back to the EWMH type. Both run only on X11. The Wayland
++    // role switch below still runs on every platform; it no-ops on X11.
++    int wmType = 0;
++    if (KWindowSystem::isPlatformX11()) {
++        switch (type) {
++        case Dialog::Normal:
++            q->setFlags(Qt::FramelessWindowHint | q->flags());
++            break;
++        case Dialog::Dock:
++            wmType = QNativeInterface::Private::QXcbWindow::Dock;
++            break;
++        case Dialog::DialogWindow:
++            wmType = QNativeInterface::Private::QXcbWindow::Dialog;
++            break;
++        case Dialog::PopupMenu:
++            wmType = QNativeInterface::Private::QXcbWindow::PopupMenu;
++            break;
++        case Dialog::Tooltip:
++            wmType = QNativeInterface::Private::QXcbWindow::Tooltip;
++            break;
++        case Dialog::Notification:
++            wmType = QNativeInterface::Private::QXcbWindow::Notification;
++            break;
++        case Dialog::OnScreenDisplay:
++        case Dialog::CriticalNotification:
++        case Dialog::AppletPopup:
++            // Not supported by Qt
++            break;
++        }
++
++        if (wmType) {
++            q->setProperty("_q_xcb_wm_window_type", wmType);
++        }
++        if (!wmType && type != Dialog::Normal) {
++            KX11Extras::setType(q->winId(), static_cast<NET::WindowType>(type));
++        }
++    }
++
+     if (q->flags() & Qt::WindowStaysOnTopHint) {
+         // If the AppletPopup type is not explicitly requested, then use the Dock type in this case
+         // to avoid bug #454635.
+@@ -757,6 +810,15 @@
+             dialogBackground->setImagePath(prefix + QStringLiteral("dialogs/background"));
+         }
+     }
++
++    if (KWindowSystem::isPlatformX11()) {
++        if (type == Dialog::Dock || type == Dialog::Notification || type == Dialog::OnScreenDisplay || type == Dialog::CriticalNotification) {
++            KX11Extras::setOnAllDesktops(q->winId(), true);
++        } else {
++            KX11Extras::setOnAllDesktops(q->winId(), false);
++        }
++    }
++
+     PlasmaShellWaylandIntegration::get(q)->setTakesFocus(!q->flags().testFlag(Qt::WindowDoesNotAcceptFocus));
+ }
+ 
+@@ -1017,6 +1079,12 @@
+     // if the item is in a window that ignores WM we want to position the popups outside
+     bool outsideParentWindow = (item->window()->flags() & Qt::X11BypassWindowManagerHint) && item->window()->mask().isNull();
+ 
++    if (KWindowSystem::isPlatformX11()) {
++        // Panels are managed Dock windows. Popups still need to sit outside them.
++        const KWindowInfo winInfo(item->window()->winId(), NET::WMWindowType);
++        outsideParentWindow = outsideParentWindow || (winInfo.windowType(NET::AllTypesMask) == NET::Dock && item->window()->mask().isNull());
++    }
++
+     QRect parentGeometryBounds;
+     if (outsideParentWindow) {
+         parentGeometryBounds = item->window()->geometry();
+@@ -1291,6 +1359,10 @@
+         DialogShadows::instance()->addWindow(this, d->dialogBackground->enabledBorders());
+     }
+ 
++    // EWMH states are cleared on hide. Re-apply them on every X11 show.
++    if (KWindowSystem::isPlatformX11()) {
++        KX11Extras::setState(winId(), NET::SkipTaskbar | NET::SkipPager | NET::SkipSwitcher);
++    }
+     QQuickWindow::showEvent(event);
+ }
+ 
+diff -ruN a/src/plasmaquick/plasmawindow.cpp b/src/plasmaquick/plasmawindow.cpp
+--- a/src/plasmaquick/plasmawindow.cpp	2026-10-21 23:01:50.869901356 +0200
++++ b/src/plasmaquick/plasmawindow.cpp	2026-10-21 23:20:06.748498501 +0200
+@@ -11,6 +11,8 @@
+ #include <QQuickItem>
+ 
+ #include <KWindowEffects>
++#include <KWindowSystem>
++#include <KX11Extras>
+ #include <Plasma/Theme>
+ 
+ using namespace Plasma;
+@@ -137,6 +139,12 @@
+ 
+ void PlasmaWindow::showEvent(QShowEvent *e)
+ {
++    // EWMH states that the state is reset every hide.
++    // Qt supports external factors setting state before the next show.
++    // Wayland stacking is handled by the plasma shell role, not these flags.
++    if (KWindowSystem::isPlatformX11()) {
++        KX11Extras::setState(winId(), NET::SkipTaskbar | NET::SkipPager | NET::SkipSwitcher);
++    }
+     QQuickWindow::showEvent(e);
+ }
+ 
+@@ -162,7 +170,17 @@
+                                              theme.backgroundSaturation(),
+                                              mask);
+ 
+-    q->setMask(mask);
++    // Composited X11 must not clip DialogShadows with an X shape mask.
++    // Non-composited X11 needs the mask. Wayland keeps the 6.8 always-set mask.
++    if (KWindowSystem::isPlatformX11()) {
++        if (!KX11Extras::compositingActive()) {
++            q->setMask(mask);
++        } else if (!q->mask().isEmpty()) {
++            q->setMask(QRegion());
++        }
++    } else {
++        q->setMask(mask);
++    }
+ }
+ 
+ void PlasmaWindowPrivate::updateMainItemGeometry()
