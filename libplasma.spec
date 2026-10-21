@@ -8,7 +8,7 @@
 
 Name: libplasma
 Version: 6.8.1
-Release: %{?git:0.%{git}.}1
+Release: %{?git:0.%{git}.}2
 %if 0%{?git:1}
 Source0: https://invent.kde.org/plasma/libplasma/-/archive/%{gitbranch}/libplasma-%{gitbranchd}.tar.bz2#/libplasma-%{git}.tar.bz2
 %else
@@ -70,7 +70,8 @@ Requires: plasma-framework-common = %{EVRD}
 # Docs have been removed upstream in 6.7.0
 Obsoletes:	%{name}-doc < %{EVRD}
 
-#patchlist
+%patchlist
+libplasma-6.8.1-x11-blur-watcher.patch
 
 %description
 Foundational libraries, components, and tools of the Plasma workspaces

@@ -1,0 +1,21 @@
+diff -ruN a/src/plasma/private/blureffectwatcher.cpp b/src/plasma/private/blureffectwatcher.cpp
+--- a/src/plasma/private/blureffectwatcher.cpp	2026-10-21 18:35:34.272246381 +0200
++++ b/src/plasma/private/blureffectwatcher.cpp	2026-10-21 18:35:34.272407533 +0200
+@@ -51,10 +51,14 @@
+     : QObject(parent)
+ {
+     // TODO: New KWindowEffects APIs are needed.
+-    static bool insideKwin = QGuiApplication::platformName() == QLatin1String("wayland-org.kde.kwin.qpa");
+-    if (insideKwin) {
++    // ext_background_effect_manager_v1 is a Wayland protocol. Constructing the
++    // client extension on any other platform makes Qt create a QWaylandIntegration
++    // and log "Failed to create wl_display". plasmashell does that while loading
++    // the Plasma theme, including when QT_QPA_PLATFORM=xcb.
++    static const QString platformName = QGuiApplication::platformName();
++    if (platformName == QLatin1String("wayland-org.kde.kwin.qpa")) {
+         m_effectActive = true;
+-    } else {
++    } else if (platformName.startsWith(QLatin1String("wayland"))) {
+         m_backgroundEffectManager = std::make_unique<BackgroundEffectManager>();
+         connect(m_backgroundEffectManager.get(), &BackgroundEffectManager::capabilitiesChanged, this, [this]() {
+             m_effectActive = m_backgroundEffectManager->m_supportsBlur;
