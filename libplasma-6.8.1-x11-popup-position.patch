@@ -1,0 +1,16 @@
+diff -ruN a/src/plasmaquick/popupplasmawindow.cpp b/src/plasmaquick/popupplasmawindow.cpp
+--- a/src/plasmaquick/popupplasmawindow.cpp	2026-10-21 19:33:31.899378484 +0200
++++ b/src/plasmaquick/popupplasmawindow.cpp	2026-10-21 19:33:31.899467345 +0200
+@@ -176,7 +176,11 @@
+     updateEffectivePopupDirection(parentAnchorRect.toRect(), relativePopupPosition);
+     updateSlideEffect(popupPosition);
+ 
+-    if (KWindowSystem::isPlatformWayland()) {
++    if (KWindowSystem::isPlatformX11()) {
++        // 6.8 dropped the X11 call. The position is still computed above, but
++        // without setPosition a Qt::Dialog is placed in the center of the screen.
++        q->setPosition(popupPosition.topLeft());
++    } else if (KWindowSystem::isPlatformWayland()) {
+         updatePosition(popupPosition.topLeft());
+     }
+ 

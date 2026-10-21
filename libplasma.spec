@@ -8,7 +8,7 @@
 
 Name: libplasma
 Version: 6.8.1
-Release: %{?git:0.%{git}.}2
+Release: %{?git:0.%{git}.}3
 %if 0%{?git:1}
 Source0: https://invent.kde.org/plasma/libplasma/-/archive/%{gitbranch}/libplasma-%{gitbranchd}.tar.bz2#/libplasma-%{git}.tar.bz2
 %else
@@ -72,6 +72,7 @@ Obsoletes:	%{name}-doc < %{EVRD}
 
 %patchlist
 libplasma-6.8.1-x11-blur-watcher.patch
+libplasma-6.8.1-x11-popup-position.patch
 
 %description
 Foundational libraries, components, and tools of the Plasma workspaces
